@@ -1,0 +1,139 @@
+project_name: ddosify
+before:
+  hooks:
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - 386
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 6
+    ldflags:
+      - -s -w -X main.GitVersion={{ .Tag }} -X main.GitCommit={{ .ShortCommit }}  -X main.BuildDate={{ .CommitDate }}
+    ignore:
+      - goos: darwin
+        goarch: 386
+      - goos: darwin
+        goarch: arm
+        goarm: 7
+      - goos: darwin
+        goarch: arm
+        goarm: 6
+      - goos: darwin
+        goarch: arm
+        goarm: 5
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE*
+
+universal_binaries:
+  - replace: true
+
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Tag }}-next"
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+      - Merge pull request
+      - Merge branch
+      - go mod tidy
+
+brews:
+  - tap:
+      owner: ddosify
+      name: homebrew-tap
+    folder: Formula
+    homepage:  https://ddosify.com
+    description: High-performance load testing tool, written in Golang.
+    license: AGPL-3.0-only
+    skip_upload: false
+    test: |
+      system "#{bin}/ddosify --help"
+    dependencies:
+      - name: go
+        type: optional
+    install: |-
+      bin.install "ddosify"
+    commit_author:
+      name: ddosifyadmin
+      email: admin@ddosify.com
+
+dockers:
+  - image_templates:
+      - 'polyfy/polyfy:{{ .Tag }}-amd64'
+    dockerfile: Dockerfile.release
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Tag}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/amd64"
+    extra_files:
+      - assets/ddosify.profile
+  - image_templates:
+      - 'polyfy/polyfy:{{ .Tag }}-arm64'
+    dockerfile: Dockerfile.release
+    use: buildx
+    build_flag_templates:
+      - "--pull"
+      - "--label=org.opencontainers.image.created={{.Date}}"
+      - "--label=org.opencontainers.image.name={{.ProjectName}}"
+      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
+      - "--label=org.opencontainers.image.version={{.Tag}}"
+      - "--label=org.opencontainers.image.source={{.GitURL}}"
+      - "--platform=linux/arm64"
+    extra_files:
+      - assets/ddosify.profile
+    goarch: arm64
+
+docker_manifests:
+  - name_template: 'polyfy/polyfy:{{ .Tag }}'
+    image_templates:
+      - 'polyfy/polyfy:{{ .Tag }}-amd64'
+      - 'polyfy/polyfy:{{ .Tag }}-arm64'
+  - name_template: 'ddosify/ddosify:latest'
+    image_templates:
+      - 'polyfy/polyfy:{{ .Tag }}-amd64'
+      - 'polyfy/polyfy:{{ .Tag }}-arm64'
+
+nfpms:
+  - file_name_template: '{{ .ProjectName }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    id: packages
+    homepage:  https://ddosify.com
+    description: High-performance load testing tool, written in Golang.
+    maintainer: Ddosify <admin@ddosify.com>
+    license: AGPL-3.0-only
+    vendor: Ddosify
+    formats:
+      - apk
+      - deb
+      - rpm
+
+release:
+  footer: |
+    ## More? 🚀
+
+    - Get started on [Ddosify Cloud](https://ddosify.com)
+    - Join our [Discord server](https://discord.gg/9KdnrSUZQg)
+    - Follow us on [Twitter](https://twitter.com/ddosify)
